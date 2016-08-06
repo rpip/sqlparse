@@ -48,6 +48,7 @@ Nonterminals
  grantee
  cursor_def
  opt_order_by_clause
+ opt_limit_clause
  ordering_spec_commalist
  ordering_spec
  opt_asc_desc
@@ -144,8 +145,8 @@ Nonterminals
  create_opts
  tbl_scope
  tbl_type
- truncate_table 
- table_name 
+ truncate_table
+ table_name
  opt_materialized
  opt_storage
  system_privilege
@@ -192,6 +193,8 @@ Terminals
  AUTHORIZATION
  BETWEEN
  BY
+ LIMIT
+ OFFSET
  CHECK
  CLOSE
  COMMIT
@@ -376,7 +379,7 @@ function_ref_list -> function_ref ';' function_ref_list                         
 
     %% schema definition language
 sql -> schema                                                                                   : '$1'.
-   
+
 schema -> CREATE SCHEMA AUTHORIZATION user opt_schema_element_list                              : {'create schema authorization', '$4', '$5'}.
 
 opt_schema_element_list -> '$empty'                                                             : [].
@@ -560,7 +563,7 @@ column_commalist -> column ',' column_commalist                                 
 
 view_def -> CREATE VIEW table opt_column_commalist                                              : {'create view', '$3', '$4'}.
 view_def -> AS query_spec opt_with_check_option                                                 : {'as', '$2', '$3'}.
-   
+
 opt_with_check_option -> '$empty'                                                               : [].
 opt_with_check_option -> WITH CHECK OPTION                                                      : 'with check option'.
 
@@ -630,6 +633,12 @@ ordering_spec -> scalar_exp opt_asc_desc                                        
 opt_asc_desc -> '$empty'                                                                        : <<>>.
 opt_asc_desc -> ASC                                                                             : <<"asc">>.
 opt_asc_desc -> DESC                                                                            : <<"desc">>.
+
+opt_limit_clause -> '$empty' : {'limit', <<>>}.
+opt_limit_clause -> LIMIT INTNUM : {'limit', unwrap_bin('$2')}.
+opt_limit_clause -> LIMIT INTNUM ',' INTNUM : {'limit', {unwrap_bin('$2'), unwrap_bin('$4')}}.
+opt_limit_clause -> LIMIT INTNUM OFFSET INTNUM : {'limit', {unwrap_bin('$2'), unwrap_bin('$4')}}.
+
 
     %% manipulative statements
 
@@ -768,7 +777,7 @@ select_field_commalist -> select_field_commalist ',' select_field_commalist     
 
 case_when_opt_as_exp -> case_when_exp                                                           : '$1'.
 case_when_opt_as_exp -> case_when_exp NAME                                                      : {as, '$1', unwrap_bin('$2')}.
-case_when_opt_as_exp -> case_when_exp AS NAME                                                   : {as, '$1', unwrap_bin('$3')}. 
+case_when_opt_as_exp -> case_when_exp AS NAME                                                   : {as, '$1', unwrap_bin('$3')}.
 
 case_when_exp -> '(' case_when_exp ')'                                                          : '$2'.
 case_when_exp -> CASE case_when_then_list opt_else END                                          : {'case', <<>>, '$2', '$3'}.
@@ -787,7 +796,9 @@ table_exp ->
                  opt_hierarchical_query_clause
                  opt_group_by_clause
                  opt_having_clause
-                 opt_order_by_clause                                                            : ['$1', '$2', '$3', '$4', '$5', '$6'].
+                 opt_order_by_clause
+                 opt_limit_clause
+                                                           : ['$1', '$2', '$3', '$4', '$5', '$6', '$7'].
 
 from_clause -> FROM from_commalist                                                              : {from, '$2'}.
 
@@ -915,7 +926,7 @@ in_predicate -> scalar_exp NOT IN scalar_exp_commalist                          
 in_predicate -> scalar_exp IN scalar_exp_commalist                                              : {'in', '$1', {'list', '$3'}}.
 
 all_or_any_predicate -> scalar_exp COMPARISON any_all_some subquery                             : {unwrap('$2'), '$1', {'$3', ['$4']}}.
-           
+
 any_all_some -> ANY                                                                             : 'ANY'.
 any_all_some -> ALL                                                                             : 'ALL'.
 any_all_some -> SOME                                                                            : 'SOME'.
@@ -929,7 +940,7 @@ subquery -> query_exp                                                           
 scalar_opt_as_exp -> scalar_exp                                                                 : '$1'.
 scalar_opt_as_exp -> scalar_exp COMPARISON scalar_exp                                           : {unwrap('$2'), '$1', '$3'}.
 scalar_opt_as_exp -> scalar_exp NAME                                                            : {as, '$1', unwrap_bin('$2')}.
-scalar_opt_as_exp -> scalar_exp AS NAME                                                         : {as, '$1', unwrap_bin('$3')}. 
+scalar_opt_as_exp -> scalar_exp AS NAME                                                         : {as, '$1', unwrap_bin('$3')}.
 scalar_exp -> scalar_sub_exp '||' scalar_exp                                                    : {'||','$1','$3'}.
 scalar_exp -> scalar_sub_exp                                                                    : '$1'.
 
@@ -977,7 +988,7 @@ function_ref -> AMMSC4 '(' DISTINCT scalar_exp ')'                              
 function_ref -> AMMSC4 '(' ALL scalar_exp ')'                                                   : {'fun', unwrap_bin('$1'), [{'all', '$4'}]}.
 function_ref -> AMMSC4 '(' scalar_exp ')'                                                       : {'fun', unwrap_bin('$1'), make_list('$3')}.
 
-fun_args -> fun_arg                                                                             : ['$1']. 
+fun_args -> fun_arg                                                                             : ['$1'].
 fun_args -> fun_arg ',' fun_args                                                                : ['$1' | '$3'].
 
 fun_arg -> '(' fun_arg ')'                                                                      : '$2'.
@@ -1084,7 +1095,7 @@ Erlang code.
 begin
     io:format(user, "__ "??__Rule" (~p)~n", [__Production]),
     __Production
-end). 
+end).
 
 %%-----------------------------------------------------------------------------
 %%                          dummy application interface

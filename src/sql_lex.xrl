@@ -24,7 +24,7 @@ Rules.
 
 % names
 %[A-Za-z][A-Za-z0-9_@:#]*                           : {token, {'NAME', TokenLen, TokenChars}}.
-[A-Za-z][A-Za-z0-9_@:#\$]*                          : match_any(TokenChars, TokenLen, TokenLine, ?TokenPatters).
+[_A-Za-z][A-Za-z0-9_@:#\$]*                          : match_any(TokenChars, TokenLen, TokenLine, ?TokenPatters).
 
 % parameters
 (\:[A-Za-z0-9_\.][A-Za-z0-9_\.]*)                   : {token, {'PARAMETER', TokenLine, TokenChars}}.
@@ -76,6 +76,8 @@ Erlang code.
     {"^(?i)(REQUIRED)$",        'REQUIRED'},
     {"^(?i)(BETWEEN)$",         'BETWEEN'},
     {"^(?i)(BY)$",              'BY'},
+    {"^(?i)(LIMIT)$",           'LIMIT'},
+    {"^(?i)(OFFSET)$",          'OFFSET'},
     {"^(?i)(NOCYCLE)$",         'NOCYCLE'},
     {"^(?i)(START)$",           'START'},
     {"^(?i)(PRIOR)$",           'PRIOR'},
